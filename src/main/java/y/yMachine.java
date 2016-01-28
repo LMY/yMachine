@@ -1,52 +1,23 @@
 package y;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class yMachine {
-	private long[] registers;
-	private Program program;
 	
+	public final static String sumFivePlusFour = "MOV 1 5\nMOV 2 4\nADD 1 #2";
+	public final static String sumN = "MOV 1 10\nADD 2 #1\nDEC 1\nTEST 1 #1\nJMP 16 9";
+	public final static String factN = "MOV 1 10\nMOV 2 1\nMUL 2 #1\nDEC 1\nTEST 1 #1\nJMP 16 18";
 	
-	public yMachine(int n) {
-		load(null);
-	}
-	
-	public void restart(int n) {
-		registers = new long[n];
-		registers[0] = 0;
-	}
-
-	public void restart() {
-		registers = new long[registers.length];
-		registers[0] = 0;
-	}
-
-	
-	public void load(Program program) {
-		this.program = program;
-		restart();
-	}
-	
-	public void load(Program program, int n) {
-		this.program = program;
-		restart(n);
-	}
-	
-	public void start() {
+	public static void main(String args[])
+	{
+		final byte[] code = Op.compile(factN);
 		
-	}
-	
-	public void step() {
-		final long ip = registers[0];
+		System.out.println("REF INT IS: "+Op.REF_INT_VALUE);
+		System.out.println("REF[0]: "+Op.REF_VALUE[0]);
+		System.out.println("REF[1]: "+Op.REF_VALUE[1]);
+		System.out.println("REF[2]: "+Op.REF_VALUE[2]);
+		System.out.println("REF[3]: "+Op.REF_VALUE[3]);
 		
-		// fetch
-		final long opcode = program.getLong(ip);
-		
-		// decode
-		
-		// execute
-		
-		registers[0] = ip+4;
+		final SimpleMachine machine = new SimpleMachine(10);
+		machine.start(code);
+		machine.dump();
 	}
 }

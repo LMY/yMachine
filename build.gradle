@@ -1,13 +1,18 @@
 apply plugin: 'java'
+apply plugin: 'application'
 apply plugin: 'eclipse'
 
-sourceCompatibility = 1.5
-version = '1.0'
-jar {
-    manifest {
-        attributes 'Implementation-Title': 'Gradle Quickstart',
-                   'Implementation-Version': version
-    }
+
+mainClassName = "y.yMachine"
+version = '1.0-build' + getDate()
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+def getDate() {
+    def date = new Date()
+    def formattedDate = date.format('yyMMdd')
+    return formattedDate
 }
 
 repositories {
@@ -15,12 +20,35 @@ repositories {
 }
 
 dependencies {
-    compile group: 'commons-collections', name: 'commons-collections', version: '3.2'
-    testCompile group: 'junit', name: 'junit', version: '4.+'
+//	compile 'net.sf.trove4j:trove4j:3.0.3'
 }
 
-test {
-    systemProperties 'property': 'value'
+
+task fatJar(type: Jar) {
+	manifest {
+        attributes 'Implementation-Title': 'yMachine',
+                   'Implementation-Version': version,
+					'Class-Path': configurations.compile.collect { "libs/"+it.getName() }.join(' '),
+                   'Main-Class': 'y.yEM'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar    
+}
+
+task copyLibs(type: Copy) {
+    into "$buildDir/libs/libs"
+    from configurations.runtime
+}
+
+jar {
+	dependsOn copyLibs
+	manifest {
+        attributes 'Implementation-Title': 'yMachine',
+                   'Implementation-Version': version,
+                   'Class-Path': configurations.compile.collect { "libs/"+it.getName() }.join(' '),                   
+                   'Main-Class': 'y.yEM'
+    }
 }
 
 uploadArchives {
