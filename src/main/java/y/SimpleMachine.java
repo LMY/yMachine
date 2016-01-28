@@ -116,7 +116,7 @@ public class SimpleMachine {
 		while (true) {
 			ret = createValue(program);
 			
-			if (ret == Op.REF_INT_VALUE)
+			if (ret == Compiler.REF_INT_VALUE)
 				ref_count++;
 			else
 				break;
@@ -129,7 +129,7 @@ public class SimpleMachine {
 	}
 	
 	public int createValue(byte[] program) {
-		return Op.fromByteArray(new byte[] {		// decode 4 byte -> int
+		return Compiler.fromByteArray(new byte[] {		// decode 4 byte -> int
 				program[(int) registers[0]++],
 				program[(int) registers[0]++],
 				program[(int) registers[0]++],

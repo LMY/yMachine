@@ -4,7 +4,7 @@ public class yMachine {
 	
 	public final static String sumFivePlusFour = "MOV 1 5\nMOV 2 4\nADD 1 #2";
 	public final static String sumN = "MOV 1 10\nADD 2 #1\nDEC 1\nTEST 1 #1\nJNZ 9";
-	public final static String factN = "MOV 1,10\nMOV 2,1\nMUL 2,#1\nDEC 1\nTEST 1,#1\nJNZ 18";
+	public final static String factN = "MOV 1,10\nMOV 2,1\njump_here:MUL 2,#1\nDEC 1\nTEST 1,#1\nJNZ jump_here";
 	
 	public static void main(String args[])
 	{
@@ -22,7 +22,7 @@ public class yMachine {
 	}
 	
 	public static long execute(int regn, int outn, String code) throws Exception {
-		final byte[] program = Op.compile(code);
+		final byte[] program = Compiler.compile(code);
 		return execute(regn, outn, program);
 	}
 	
