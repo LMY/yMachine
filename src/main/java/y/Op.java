@@ -49,16 +49,16 @@ public enum Op {
 		return NOP;
 	}
 	
-	public static byte[] compile(String text) {
+	public static byte[] compile(String text) throws Exception {
 		final String[] lines = text.split("\n");
 		
 		final List<Byte> compiled = new ArrayList<Byte>();
-		for (String line : lines) {
-			line = line.trim();
+		for (int linen=0; linen<lines.length; linen++) {
+			final String line = lines[linen].trim();
 			if (line.isEmpty() || line.startsWith(";") || line.startsWith("#") || line.startsWith("//"))
 				continue;
 			
-			final List<Byte> onelinecompiled = compileLine(line);
+			final List<Byte> onelinecompiled = compileLine(line, linen);
 			if (onelinecompiled != null)
 				compiled.addAll(onelinecompiled);
 		}
@@ -69,17 +69,45 @@ public enum Op {
 		return ret;		
 	}
 	
-	public static List<Byte> compileLine(String line) {
+	public static List<Byte> compileLine(String line, int linen) throws Exception {
 		
 		final String[] args = line.split("\\s");
 		
 		final List<Byte> ret = new ArrayList<Byte>();
 		
-		final Op op = Op.create(args[0]);		
+		final Op op = Op.create(args[0]);
+		
+		// check number of arguments
+		if ((op == NOP && args.length != 1) ||
+			(op == INC && args.length != 2) || (op == DEC && args.length != 2) || (op == NOT && args.length != 2) ||		
+
+			(op == MOV && args.length != 3) || (op == ADD && args.length != 3) || (op == SUB && args.length != 3) ||		
+			(op == MUL && args.length != 3) || (op == DIV && args.length != 3) || (op == MOD && args.length != 3) ||		
+			(op == AND && args.length != 3) || (op == OR && args.length != 3) || (op == XOR && args.length != 3) ||		
+			(op == SHR && args.length != 3) || (op == SHL && args.length != 3) || (op == ROR && args.length != 3) ||		
+			(op == ROL && args.length != 3) || (op == TEST && args.length != 3) || (op == JMP && args.length != 3))
+			throw new Exception(""+(linen+1)+" ERROR: Invalid arg number ("+args.length+")");
+			
 		ret.add(op.getCode());
 		
-		for (int i=1; i<args.length; i++)
-			ret.addAll(compileValue(args[i]));
+		for (int i=1; i<args.length; i++) {
+			List<Byte> compiledLine = compileValue(args[i]);
+			
+//			if (i == 1 && compiledLine.size() == 8) {
+//				System.out.println(""+(linen+1)+" WARNING: First argument must be a register");
+//				
+//				final List<Byte> newcompiledLine = new ArrayList<Byte>();
+//				newcompiledLine.add(compiledLine.get(4));
+//				newcompiledLine.add(compiledLine.get(5));
+//				newcompiledLine.add(compiledLine.get(6));
+//				newcompiledLine.add(compiledLine.get(7));
+//				compiledLine = newcompiledLine;
+//			}
+//			else if (i == 1 && compiledLine.size() > 8)
+//				throw new Exception(""+(linen+1)+" ERROR: First argument must be a register");
+			
+			ret.addAll(compiledLine);
+		}
 		
 		return ret;
 	}

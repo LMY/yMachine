@@ -49,7 +49,7 @@ public class SimpleMachine {
 			registers[reg1] = ~registers[reg1];
 		else {
 			final int value = createReg(program);
-//	System.out.println(""+value);	
+//	System.out.println(""+value);
 	
 			if (op == Op.MOV)
 				registers[reg1] = value;

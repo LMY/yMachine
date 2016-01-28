@@ -13,11 +13,15 @@ public class yMachine {
 //		final SimpleMachine machine = new SimpleMachine(10);
 //		machine.start(code);
 //		machine.dump();
-		
-		System.out.println("Result is: "+execute(2, 2, factN));
+		try {
+			System.out.println("Result is: "+execute(2, 2, factN));
+		}
+		catch (Exception e) {
+			System.out.println("Exception: "+e.getMessage());
+		}
 	}
 	
-	public static long execute(int regn, int outn, String code) {
+	public static long execute(int regn, int outn, String code) throws Exception {
 		final byte[] program = Op.compile(code);
 		return execute(regn, outn, program);
 	}
