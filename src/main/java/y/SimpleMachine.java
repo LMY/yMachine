@@ -6,7 +6,7 @@ public class SimpleMachine {
 	private boolean flag_z;
 	private boolean flag_g;
 	private boolean flag_l;
-	private boolean flag_o;
+//	private boolean flag_o;
 	
 	private long[] registers;
 	
@@ -17,7 +17,11 @@ public class SimpleMachine {
 		flag_z = false;
 		flag_g = false;
 		flag_l = false;
-		flag_o = false;
+//		flag_o = false;
+	}
+	
+	public long yield(int n) {
+		return registers[n];
 	}
 	
 	public void start(byte[] program) {
@@ -28,17 +32,14 @@ public class SimpleMachine {
 	
 	
 	public void step(byte[] program) {
-//		final int ip = (int) registers[0];
-		
 		final Op op = Op.create(program[(int) registers[0]++]);
-		
-System.out.println(""+op.toString());
+//System.out.println(""+op.toString());
 		
 		if (op == Op.NOP)
 			return;
 		
 		final int reg1 = createReg(program);
-System.out.println(""+reg1);
+//System.out.println(""+reg1);
 		
 		if (op == Op.INC)
 			registers[reg1]++;
@@ -48,7 +49,7 @@ System.out.println(""+reg1);
 			registers[reg1] = ~registers[reg1];
 		else {
 			final int value = createReg(program);
-	System.out.println(""+value);	
+//	System.out.println(""+value);	
 	
 			if (op == Op.MOV)
 				registers[reg1] = value;
@@ -80,13 +81,11 @@ System.out.println(""+reg1);
 				registers[reg1] <<= value;
 			
 			else if (op == Op.TEST) {
-				
 				flag_z = registers[reg1]==0;
 				flag_e = registers[reg1]==value;
 				flag_g = registers[reg1]<value;
 				flag_l = registers[reg1]>value;
-				
-				flag_o = false;
+//				flag_o = false;
 			}
 			else if (op == Op.JMP) {
 				final boolean req_z = (reg1&1) != 0;
@@ -101,7 +100,7 @@ System.out.println(""+reg1);
 				
 				if ((req_z && !flag_z) || (req_e && !flag_e) || (req_g && !flag_g) || (req_l && !flag_l) ||
 					(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)
-						)	// flag required, but not set
+					)	// flag required, but not set
 					;	// do not jump
 				else
 					registers[0] = value;

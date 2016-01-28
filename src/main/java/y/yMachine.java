@@ -8,16 +8,23 @@ public class yMachine {
 	
 	public static void main(String args[])
 	{
-		final byte[] code = Op.compile(factN);
+//		final byte[] code = Op.compile(factN);
+//		
+//		final SimpleMachine machine = new SimpleMachine(10);
+//		machine.start(code);
+//		machine.dump();
 		
-		System.out.println("REF INT IS: "+Op.REF_INT_VALUE);
-		System.out.println("REF[0]: "+Op.REF_VALUE[0]);
-		System.out.println("REF[1]: "+Op.REF_VALUE[1]);
-		System.out.println("REF[2]: "+Op.REF_VALUE[2]);
-		System.out.println("REF[3]: "+Op.REF_VALUE[3]);
-		
-		final SimpleMachine machine = new SimpleMachine(10);
-		machine.start(code);
-		machine.dump();
+		System.out.println("Result is: "+execute(2, 2, factN));
+	}
+	
+	public static long execute(int regn, int outn, String code) {
+		final byte[] program = Op.compile(code);
+		return execute(regn, outn, program);
+	}
+	
+	public static long execute(int regn, int outn, byte[] program) {
+		final SimpleMachine machine = new SimpleMachine(regn + 1);
+		machine.start(program);
+		return machine.yield(outn);
 	}
 }
