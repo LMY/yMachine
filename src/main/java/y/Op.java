@@ -71,7 +71,28 @@ public enum Op {
 	
 	public static List<Byte> compileLine(String line, int linen) throws Exception {
 		
-		final String[] args = line.split("\\s");
+		String[] args = line.split("\\s");
+
+		if (args[0].startsWith("J") && args.length == 2) {
+			
+			final String orig = args[0];
+			args = new String[] { "JMP", "", args[1] }; 
+			
+			int reg = 0;
+			boolean negate = false;
+			
+			for (int i=1; i<orig.length(); i++) {
+				switch (orig.charAt(i)) {
+				case 'N': negate = true; break;
+				case 'Z': reg |= (negate?16:1);  negate = false; break;
+				case 'E': reg |= (negate?32:2);  negate = false; break;
+				case 'G': reg |= (negate?64:4);  negate = false; break;
+				case 'L': reg |= (negate?128:8);  negate = false; break;
+				default : throw new Exception(""+(linen+1)+" ERROR: Invalid jump number ("+orig.charAt(i)+")");
+				}
+			}
+			args[1] = ""+reg;
+		}
 		
 		final List<Byte> ret = new ArrayList<Byte>();
 		
