@@ -71,7 +71,7 @@ public enum Op {
 	
 	public static List<Byte> compileLine(String line, int linen) throws Exception {
 		
-		String[] args = line.split("\\s");
+		String[] args = line.split("[\\s,]");
 
 		if (args[0].startsWith("J") && args.length == 2) {
 			

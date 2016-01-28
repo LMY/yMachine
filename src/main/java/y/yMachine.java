@@ -4,7 +4,7 @@ public class yMachine {
 	
 	public final static String sumFivePlusFour = "MOV 1 5\nMOV 2 4\nADD 1 #2";
 	public final static String sumN = "MOV 1 10\nADD 2 #1\nDEC 1\nTEST 1 #1\nJNZ 9";
-	public final static String factN = "MOV 1 10\nMOV 2 1\nMUL 2 #1\nDEC 1\nTEST 1 #1\nJNZ 18";
+	public final static String factN = "MOV 1,10\nMOV 2,1\nMUL 2,#1\nDEC 1\nTEST 1,#1\nJNZ 18";
 	
 	public static void main(String args[])
 	{
