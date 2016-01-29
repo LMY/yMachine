@@ -37,11 +37,12 @@ public enum Op {
 	
 	public byte getCode() { return (byte) ordinal(); }
 
-	public static Op create(String s)
+	public static Op create(String s) throws Exception
 	{
 		for (int i=1; i<names.length; i++)
 			if (s.equalsIgnoreCase(names[i]))
 				return create(i);
-		return NOP;
+
+		throw new Exception("Invalid opcode '"+s+"'");
 	}
 }

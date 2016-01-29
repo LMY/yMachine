@@ -1,0 +1,5 @@
+MOV 1 10
+ADD 2 #1
+DEC 1
+TEST 1 #1
+JNZ 9

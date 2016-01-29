@@ -98,16 +98,12 @@ public class SimpleMachine {
 				final boolean req_ng = (reg1&64) != 0;
 				final boolean req_nl = (reg1&128) != 0;
 				
-				if ((req_z && !flag_z) || (req_e && !flag_e) || (req_g && !flag_g) || (req_l && !flag_l) ||
-					(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)
-					)	// flag required, but not set
-					;	// do not jump
-				else
+				if (!((req_z && !flag_z) || (req_e && !flag_e) || (req_g && !flag_g) || (req_l && !flag_l) ||
+					(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)))	// required flags ok
 					registers[0] = value;
 			}
 		}
 	}
-	
 	
 	public int createReg(byte[] program) {
 		
@@ -129,7 +125,7 @@ public class SimpleMachine {
 	}
 	
 	public int createValue(byte[] program) {
-		return Compiler.fromByteArray(new byte[] {		// decode 4 byte -> int
+		return Utils.fromByteArray(new byte[] {		// decode 4 byte -> int
 				program[(int) registers[0]++],
 				program[(int) registers[0]++],
 				program[(int) registers[0]++],

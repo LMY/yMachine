@@ -45,17 +45,16 @@ public class Compiler {
 			final String[] p = line.split(":");
 			if (p.length != 2)
 				throw new Exception(""+(linen+1)+" ERROR: Multiple labels (or usage of ':'s)");
-			line = p[1];
+			line = p[1].trim();
 
 			// commented = labels can be redefined
 //			if (labels.get(p[0]) != null)
 //				throw new Exception(""+(linen+1)+" ERROR: Label '"+p[0]+"' already defined at "+labels.get(p[0]));
 			
-			labels.put(p[0], addr);
+			labels.put(p[0].trim(), addr);
 		}
 		
-		
-		String[] args = line.split("[\\s,]");
+		String[] args = Utils.splitAndTrim(line, "[\\s,]");
 
 		// decode conditional JMPs
 		if (args[0].startsWith("J") && args.length == 2) {
@@ -79,7 +78,7 @@ public class Compiler {
 			args[1] = ""+reg;
 		}
 		
-		if (args[0].equals("JMP") && !isInteger(args[2])) {
+		if (args[0].equals("JMP") && !Utils.isInteger(args[2])) {
 			Integer where = labels.get(args[2]);
 			if (where == null)
 				throw new Exception(""+(linen+1)+" ERROR: Undefined label '"+args[2]+"'");
@@ -89,7 +88,7 @@ public class Compiler {
 		
 		final List<Byte> ret = new ArrayList<Byte>();
 		
-		final Op op = Op.create(args[0]);
+		final Op op = createOpcode(args[0], linen);
 		
 		// check number of arguments
 		if ((op == Op.NOP && args.length != 1) ||
@@ -126,17 +125,18 @@ public class Compiler {
 		return ret;
 	}
 	
+	private static Op createOpcode(String opcode, int linen) throws Exception {
+		try {
+			return Op.create(opcode);
+		}
+		catch (Exception e) {
+			throw new Exception(""+(linen+1)+" "+e.getMessage());
+		}
+	}
+	
 	public static final int REF_INT_VALUE = 0xFFFFFFFF;
-	public static final byte[] REF_VALUE = toByteArray(REF_INT_VALUE);
+	public static final byte[] REF_VALUE = Utils.toByteArray(REF_INT_VALUE);
 
-	public static int fromByteArray(byte[] bytes) {
-	     return bytes[0] << 24 | (bytes[1] & 0xFF) << 16 | (bytes[2] & 0xFF) << 8 | (bytes[3] & 0xFF);
-	}
-	public static byte[] toByteArray(int value) {
-	    return new byte[] { (byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value };
-	}
-	
-	
 	public static List<Byte> compileValue(String line) {
 		
 		try {
@@ -145,10 +145,8 @@ public class Compiler {
 			while (line.startsWith("#")) {
 				line = line.substring(1);
 				
-				ret.add(REF_VALUE[0]);
-				ret.add(REF_VALUE[1]);
-				ret.add(REF_VALUE[2]);
-				ret.add(REF_VALUE[3]);
+				for (int k=0; k<REF_VALUE.length; k++)
+					ret.add(REF_VALUE[k]);
 			}
 			final int x = Integer.parseInt(line);
 			ret.add((byte)(x/256/256/256));
@@ -159,22 +157,5 @@ public class Compiler {
 			return ret;
 		}
 		catch (Exception e) { return new ArrayList<Byte>(); }
-	}
-	
-	
-	public static boolean isInteger(String s) {
-	    return isInteger(s,10);
-	}
-
-	public static boolean isInteger(String s, int radix) {
-	    if(s.isEmpty()) return false;
-	    for(int i = 0; i < s.length(); i++) {
-	        if(i == 0 && s.charAt(i) == '-') {
-	            if(s.length() == 1) return false;
-	            else continue;
-	        }
-	        if(Character.digit(s.charAt(i),radix) < 0) return false;
-	    }
-	    return true;
 	}
 }
