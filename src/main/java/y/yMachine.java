@@ -22,7 +22,7 @@ public class yMachine {
 	}
 	
 	public static long execute(byte[] program) {
-		final SimpleMachine machine = new SimpleMachine();
-		return machine.start(program);
+		final SimpleMachine machine = new SimpleMachine(program);
+		return machine.start();
 	}
 }

@@ -12,9 +12,16 @@ public class SimpleMachine {
 	private boolean running;
 	
 	private long[] registers;
+	private byte[] program;
+	
 	
 	public SimpleMachine() {
+		this(new byte[0]);
+	}
+	
+	public SimpleMachine(byte[] program) {
 		registers = new long[1];
+		load(program, true);
 		
 		flag_e = false;
 		flag_z = false;
@@ -23,11 +30,14 @@ public class SimpleMachine {
 //		flag_o = false;
 	}
 	
-	public long read(int n) {
-		return registers[n];
+	
+	public void load(byte[] program, boolean restart) {
+		this.program = program;
+		if (restart && registers != null && registers.length > 0)
+			registers[0] = 0;
 	}
 	
-	public long start(byte[] program) {
+	public long start() {
 		running = true;
 		retv = 0;
 		
@@ -45,7 +55,7 @@ public class SimpleMachine {
 		if (op == Op.NOP)
 			return;
 		
-		final int reg1 = createReg(program);
+		final int reg1 = parseRegister(program);
 //System.out.println(""+reg1);
 		
 		if (op == Op.INC)
@@ -66,7 +76,7 @@ public class SimpleMachine {
 			retv = reg1;
 		}
 		else {
-			final int value = createReg(program);
+			final int value = parseRegister(program);
 //	System.out.println(""+value);
 	
 			if (op == Op.MOV)
@@ -123,26 +133,23 @@ public class SimpleMachine {
 		}
 	}
 	
-	public int createReg(byte[] program) {
-		
-		int ret, ref_count = 0;
+	public int parseRegister(byte[] program) {
+		int ref_count = 0;
 		
 		while (true) {
-			ret = createValue(program);
+			int ret = parseValue(program);
 			
 			if (ret == Compiler.REF_INT_VALUE)
 				ref_count++;
-			else
-				break;
+			else {
+				while (ref_count-- > 0)
+					ret = (int) registers[ret];
+				return ret;
+			}
 		}
-		
-		while (ref_count-- > 0)
-			ret = (int) registers[ret];
-		
-		return ret;	
 	}
 	
-	public int createValue(byte[] program) {
+	public int parseValue(byte[] program) {
 		return Utils.fromByteArray(new byte[] {		// decode 4 byte -> int
 				program[(int) registers[0]++],
 				program[(int) registers[0]++],
@@ -160,5 +167,9 @@ public class SimpleMachine {
 		}
 			
 		System.out.println("]");
+	}
+	
+	public long readRegister(int n) {
+		return registers[n];
 	}
 }

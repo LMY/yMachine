@@ -22,9 +22,11 @@ public class Compiler {
 		final String[] lines = text.split("\n");
 		
 		final List<Byte> compiled = new ArrayList<Byte>();
+		
 		for (int linen=0; linen<lines.length; linen++) {
-			final String line = lines[linen].trim();
-			if (line.isEmpty() || line.startsWith(";") || line.startsWith("#") || line.startsWith("//"))
+			final String line = removeComments(lines[linen]);
+			
+			if (line.isEmpty())
 				continue;
 			
 			final List<Byte> onelinecompiled = compileLine(line, linen, compiled.size());
@@ -38,6 +40,11 @@ public class Compiler {
 		return ret;		
 	}
 	
+	private String removeComments(String text) {
+		final int pos = Math.max(text.indexOf("//"), text.indexOf(";"));
+		return (pos < 0 ? text : text.substring(0, pos-1)).trim();
+	}
+
 	public List<Byte> compileLine(String line, int linen, int addr) throws Exception {
 		
 		// save labels
