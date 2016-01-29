@@ -92,35 +92,20 @@ public class Compiler {
 		
 		// check number of arguments
 		if ((op == Op.NOP && args.length != 1) ||
-			(op == Op.INC && args.length != 2) || (op == Op.DEC && args.length != 2) || (op == Op.NOT && args.length != 2) ||		
+			(op == Op.INC && args.length != 2) || (op == Op.DEC && args.length != 2) || (op == Op.NOT && args.length != 2) ||
+			(op == Op.ALLOC && args.length != 2) || (op == Op.RETURN && args.length != 2) ||
 
-			(op == Op.MOV && args.length != 3) || (op == Op.ADD && args.length != 3) || (op == Op.SUB && args.length != 3) ||		
-			(op == Op.MUL && args.length != 3) || (op == Op.DIV && args.length != 3) || (op == Op.MOD && args.length != 3) ||		
-			(op == Op.AND && args.length != 3) || (op == Op.OR && args.length != 3) || (op == Op.XOR && args.length != 3) ||		
-			(op == Op.SHR && args.length != 3) || (op == Op.SHL && args.length != 3) || (op == Op.ROR && args.length != 3) ||		
+			(op == Op.MOV && args.length != 3) || (op == Op.ADD && args.length != 3) || (op == Op.SUB && args.length != 3) ||
+			(op == Op.MUL && args.length != 3) || (op == Op.DIV && args.length != 3) || (op == Op.MOD && args.length != 3) ||
+			(op == Op.AND && args.length != 3) || (op == Op.OR && args.length != 3) || (op == Op.XOR && args.length != 3) ||
+			(op == Op.SHR && args.length != 3) || (op == Op.SHL && args.length != 3) || (op == Op.ROR && args.length != 3) ||
 			(op == Op.ROL && args.length != 3) || (op == Op.TEST && args.length != 3) || (op == Op.JMP && args.length != 3))
 			throw new Exception(""+(linen+1)+" ERROR: Invalid arg number ("+args.length+")");
 			
 		ret.add(op.getCode());
 		
-		for (int i=1; i<args.length; i++) {
-			List<Byte> compiledLine = compileValue(args[i]);
-			
-//			if (i == 1 && compiledLine.size() == 8) {
-//				System.out.println(""+(linen+1)+" WARNING: First argument must be a register");
-//				
-//				final List<Byte> newcompiledLine = new ArrayList<Byte>();
-//				newcompiledLine.add(compiledLine.get(4));
-//				newcompiledLine.add(compiledLine.get(5));
-//				newcompiledLine.add(compiledLine.get(6));
-//				newcompiledLine.add(compiledLine.get(7));
-//				compiledLine = newcompiledLine;
-//			}
-//			else if (i == 1 && compiledLine.size() > 8)
-//				throw new Exception(""+(linen+1)+" ERROR: First argument must be a register");
-			
-			ret.addAll(compiledLine);
-		}
+		for (int i=1; i<args.length; i++)
+			ret.addAll(compileValue(args[i]));
 		
 		return ret;
 	}
@@ -144,18 +129,22 @@ public class Compiler {
 			
 			while (line.startsWith("#")) {
 				line = line.substring(1);
-				
-				for (int k=0; k<REF_VALUE.length; k++)
-					ret.add(REF_VALUE[k]);
+				appendArray(ret, REF_VALUE);
 			}
-			final int x = Integer.parseInt(line);
-			ret.add((byte)(x/256/256/256));
-			ret.add((byte)(x/256/256));
-			ret.add((byte)(x/256));
-			ret.add((byte)x);
+			
+			appendArray(ret, intToByteArray(Integer.parseInt(line)));
 
 			return ret;
 		}
 		catch (Exception e) { return new ArrayList<Byte>(); }
+	}
+	
+	public static void appendArray(List<Byte> theList, byte[] theArray) {
+		for (int k=0; k<theArray.length; k++)
+			theList.add(theArray[k]);
+	}
+	
+	public static final byte[] intToByteArray(int value) {
+	    return new byte[] { (byte)(value >>> 24), (byte)(value >>> 16), (byte)(value >>> 8), (byte)value };
 	}
 }

@@ -8,10 +8,13 @@ public class SimpleMachine {
 	private boolean flag_l;
 //	private boolean flag_o;
 	
+	private long retv;
+	private boolean running;
+	
 	private long[] registers;
 	
-	public SimpleMachine(int n) {
-		registers = new long[n];
+	public SimpleMachine() {
+		registers = new long[1];
 		
 		flag_e = false;
 		flag_z = false;
@@ -20,14 +23,18 @@ public class SimpleMachine {
 //		flag_o = false;
 	}
 	
-	public long yield(int n) {
+	public long read(int n) {
 		return registers[n];
 	}
 	
-	public void start(byte[] program) {
+	public long start(byte[] program) {
+		running = true;
+		retv = 0;
 		
-		while (registers[0] < program.length)
-			step(program);		
+		while (registers[0] < program.length && running)
+			step(program);
+		
+		return retv;
 	}
 	
 	
@@ -47,6 +54,17 @@ public class SimpleMachine {
 			registers[reg1]--;	
 		else if (op == Op.NOT)
 			registers[reg1] = ~registers[reg1];
+		else if (op == Op.ALLOC) {
+			final long[] newregisters = new long[reg1+1];
+			for (int i=0, imax=Math.min(registers.length, newregisters.length); i<imax; i++)
+				newregisters[i] = registers[i];
+			
+			registers = newregisters;
+		}
+		else if (op == Op.RETURN) {
+			running = false;
+			retv = reg1;
+		}
 		else {
 			final int value = createReg(program);
 //	System.out.println(""+value);

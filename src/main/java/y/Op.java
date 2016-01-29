@@ -24,11 +24,14 @@ public enum Op {
 	ROL,
 	
 	TEST,
-	JMP;
+	JMP,
+	
+	ALLOC,
+	RETURN;
 	
 	public static final String[] names = {  "NOP",
 		"INC", "DEC", "NOT",
-		"MOV", "ADD", "SUB", "MUL", "DIV", "MOD", "AND", "OR", "XOR", "SHR", "SHL", "ROR", "ROL", "TEST", "JMP", };
+		"MOV", "ADD", "SUB", "MUL", "DIV", "MOD", "AND", "OR", "XOR", "SHR", "SHL", "ROR", "ROL", "TEST", "JMP", "ALLOC", "RETURN" };
 	
 	public String getName() { return names[ordinal()]; }
 	
