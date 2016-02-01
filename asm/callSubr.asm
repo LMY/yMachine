@@ -20,11 +20,12 @@
 
 @start:		ALLOC 2
 			MOV 1,10	// arg to calc
-			FORK 2
-			LOADCODE 2,@fact,100
-			OUT 2,#1,1
-			START 2
-			JOIN 2
-			IN 2,1,2
-			FREE 2
+			MOV 2,31337	// 31337 is the id of the new machine
+			FORK #2
+			LOADCODE #2,@fact,100
+			OUT #2,#1,1
+			START #2
+			JOIN #2
+			IN #2,1,2
+			FREE #2
 			RETURN #1

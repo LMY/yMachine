@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class SimpleMachine {
 	
-	final static boolean DEBUG = false;
+	final static boolean DEBUG = Compiler.DEBUG;
 	
 	private boolean flag_e;
 	private boolean flag_z;

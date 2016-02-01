@@ -47,10 +47,16 @@ public class Compiler {
 		for (int i=0; i<ret.length; i++)
 			ret[i] = compiled.get(i);
 		
-		adjourn_calls(ret);
-		
+
 		if (DEBUG) 
 			dump_compiled(ret);
+
+		adjourn_calls(ret);
+		
+		if (DEBUG) {
+			System.out.println("After adjourn_calls()");
+			dump_compiled(ret);
+		}
 		
 		return ret;
 	}
@@ -108,11 +114,6 @@ public class Compiler {
 			}
 		}
 		
-		if ((args[0].equals("JMP") || args[0].equals("LOADCODE")) && !Utils.isInteger(args[2])) {
-			labels_used.add(new Pair(args[2], addr+1+4, addr)); // +1 (JMP) + 4 (JMP FLAGS)
-			args[2] = "0";
-		}
-		
 		final List<Byte> ret = new ArrayList<Byte>();
 		
 		final Op op = createOpcode(args[0], linen);
@@ -135,8 +136,14 @@ public class Compiler {
 		
 		ret.add(op.getCode());
 		
-		for (int i=1; i<args.length; i++)
-			ret.addAll(compileValue(args[i]));
+		for (int i=1; i<args.length; i++) {
+			if (i == 2 && (op == Op.JMP || op == Op.LOADCODE) && !Utils.isInteger(args[2])) {
+				labels_used.add(new Pair(args[2], addr+ret.size(), addr+ret.size()+4));
+				ret.addAll(compileValue(""+DUMMY_INT_VALUE));
+			}
+			else
+				ret.addAll(compileValue(args[i]));
+		}
 		
 		return ret;
 	}
@@ -147,7 +154,7 @@ public class Compiler {
 			if (where == null)
 				throw new Exception("ERROR: Undefined label '"+p.first+"'");
 			
-			final List<Byte> addr = compileValue(""+(where-p.second-4));
+			final List<Byte> addr = compileValue(""+(where-p.third)); // TODO jmp label
 			
 			for (int i=0; i<4; i++)
 				ret[p.second+i] = addr.get(i);
@@ -163,6 +170,7 @@ public class Compiler {
 		}
 	}
 	
+	public static final int DUMMY_INT_VALUE = 0x63636363;
 	public static final int REF_INT_VALUE = 0xFFFFFFFF;
 	public static final byte[] REF_VALUE = Utils.toByteArray(REF_INT_VALUE);
 
