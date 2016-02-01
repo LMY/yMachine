@@ -7,6 +7,12 @@ public enum Op {
 	DEC,
 	NOT,
 	
+	DATA,
+	PRINTCHAR,
+	PRINTINT,
+	PRINTSTRING,
+	READ,
+	
 	CLONE,
 	FORK,
 	START,
@@ -42,6 +48,7 @@ public enum Op {
 	
 	public static final String[] names = {  "NOP",
 		"INC", "DEC", "NOT",
+		"DATA", "PRINTCHAR", "PRINTINT", "PRINTSTRING", "READ",
 		"CLONE", "FORK", "START", "JOIN", "KILL", "FREE", "LOADCODE", "IN", "OUT",
 		"MOV", "ADD", "SUB", "MUL", "DIV", "MOD", "AND", "OR", "XOR", "SHR", "SHL", "ROR", "ROL", "TEST", "JMP", "ALLOC", "RETURN" };
 	

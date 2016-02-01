@@ -135,7 +135,31 @@ public class SimpleMachine {
 			mac.kill();
 			machines.remove(reg1);			// FREE not required
 		}
-		
+		else if (op == Op.PRINTCHAR) {
+			System.out.print((char)reg1);
+		}
+		else if (op == Op.PRINTINT)
+			System.out.print(reg1);
+		else if (op == Op.PRINTSTRING) {
+			
+			int addr = reg1;
+			
+			while (true) {
+				final long value = Utils.fromByteArray(new byte[] {		// decode 4 byte -> int
+						program[addr++],
+						program[addr++],
+						program[addr++],
+						program[addr++]});
+				
+				if (value == 0)
+					break;
+				else
+					System.out.print((char)value);
+			}
+		}
+		else if (op == Op.DATA)
+			;	// NOP
+
 		//
 		// OPS with 2 params
 		//

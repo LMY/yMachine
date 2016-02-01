@@ -4,7 +4,7 @@ public class yMachine {
 	public static void main(String args[])
 	{
 		try {
-			System.out.println(""+executeFilename("asm/callSubr.asm"));
+			System.out.println(""+executeFilename("asm/HelloWorld-String.asm"));
 		}
 		catch (Exception e) {
 			System.out.println("ERROR: "+e.getMessage()+"\n");

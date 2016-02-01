@@ -122,6 +122,7 @@ public class Compiler {
 		if ((op == Op.NOP && args.length != 1) ||
 			(op == Op.INC && args.length != 2) || (op == Op.DEC && args.length != 2) || (op == Op.NOT && args.length != 2) ||
 			(op == Op.ALLOC && args.length != 2) || (op == Op.RETURN && args.length != 2) ||
+			(op == Op.DATA && args.length != 2) || (op == Op.PRINTCHAR && args.length != 2) || (op == Op.PRINTINT && args.length != 2) || (op == Op.PRINTSTRING && args.length != 2) || 
 			
 			(op == Op.CLONE && args.length != 2) || (op == Op.FORK && args.length != 2) || (op == Op.START && args.length != 2) || (op == Op.JOIN && args.length != 2) ||
 			(op == Op.KILL && args.length != 2) || (op == Op.FREE && args.length != 2) ||
@@ -134,15 +135,25 @@ public class Compiler {
 			(op == Op.ROL && args.length != 3) || (op == Op.TEST && args.length != 3) || (op == Op.JMP && args.length != 3))
 			throw new Exception(""+(linen+1)+" ERROR: Invalid arg number ("+args.length+")");
 		
-		ret.add(op.getCode());
+		if (op != Op.DATA)
+			ret.add(op.getCode());
 		
 		for (int i=1; i<args.length; i++) {
-			if (i == 2 && (op == Op.JMP || op == Op.LOADCODE) && !Utils.isInteger(args[2])) {
-				labels_used.add(new Pair(args[2], addr+ret.size(), addr+ret.size()+4));
-				ret.addAll(compileValue(""+DUMMY_INT_VALUE));
-			}
-			else
+//			if (i == 2 && (op == Op.JMP || op == Op.LOADCODE) && !Utils.isInteger(args[2])) {
+//				labels_used.add(new Pair(args[2], addr+ret.size(), addr+ret.size()+4));
+//				ret.addAll(compileValue(""+DUMMY_INT_VALUE));
+//			}
+//			else
+//				ret.addAll(compileValue(args[i]));
+			if (isCompilableValue(args[i]))
 				ret.addAll(compileValue(args[i]));
+			else {
+				if (args[2].charAt(0) == '&')
+					labels_used.add(new Pair(args[2].substring(1), addr+ret.size(), addr+ret.size()+4, true));
+				else
+					labels_used.add(new Pair(args[2], addr+ret.size(), addr+ret.size()+4, false));
+				ret.addAll(compileValue(""+DUMMY_INT_VALUE));				
+			}
 		}
 		
 		return ret;
@@ -154,7 +165,7 @@ public class Compiler {
 			if (where == null)
 				throw new Exception("ERROR: Undefined label '"+p.first+"'");
 			
-			final List<Byte> addr = compileValue(""+(where-p.third)); // TODO jmp label
+			final List<Byte> addr = compileValue(""+(p.absolute ? where : where-p.third));
 			
 			for (int i=0; i<4; i++)
 				ret[p.second+i] = addr.get(i);
@@ -174,6 +185,12 @@ public class Compiler {
 	public static final int REF_INT_VALUE = 0xFFFFFFFF;
 	public static final byte[] REF_VALUE = Utils.toByteArray(REF_INT_VALUE);
 
+	
+	public static boolean isCompilableValue(String text) {
+		return text.matches("#*\\d*");
+	}
+	
+	
 	public static List<Byte> compileValue(String line) {
 		
 		try {
