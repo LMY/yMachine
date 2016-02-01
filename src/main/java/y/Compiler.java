@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class Compiler {
 	
-	final static boolean DEBUG = false;
+	final static boolean DEBUG = true;
 	
 	private Map<String,Integer> labels_declared;
 	private List<Pair> labels_used;

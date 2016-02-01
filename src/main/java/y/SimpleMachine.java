@@ -167,8 +167,12 @@ public class SimpleMachine extends Thread {
 			}
 		}
 		else if (op == Op.DATA)
-			;	// NOP
-
+			;	// NOP. Shouldn't exist a "DATA" opcode, anyway
+		else if (op == Op.READCHAR)
+			registers[reg1] = (char) System.in.read();
+		else if (op == Op.READINT)
+			registers[reg1] = Utils.readIntFromConsolle();
+		
 		//
 		// OPS with 2 params
 		//

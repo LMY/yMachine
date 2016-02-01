@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -384,5 +385,23 @@ public class Utils {
 			x[i] = x[i].trim();
 		
 		return x;
+	}
+	
+	public static int readIntFromConsolle() {
+		
+		Scanner scanner = null;
+		
+		try {
+			scanner = new java.util.Scanner(System.in);
+			return scanner.nextInt();
+		}
+		catch (Exception e) {
+			return 12;
+		}
+		finally {
+			if (scanner != null)
+				try { scanner.close(); }
+				catch (Exception e2) {}
+		}
 	}
 }

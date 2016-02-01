@@ -11,7 +11,8 @@ public enum Op {
 	PRINTCHAR,
 	PRINTINT,
 	PRINTSTRING,
-	READ,
+	READCHAR,
+	READINT,
 	
 	CLONE,
 	FORK,

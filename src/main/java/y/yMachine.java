@@ -4,7 +4,8 @@ public class yMachine {
 	public static void main(String args[])
 	{
 		try {
-			System.out.println(""+executeFilename("asm/HelloWorld-String.asm"));
+			final long retv = executeFilename("asm/factN.asm");
+			System.out.println(""+retv);
 		}
 		catch (Exception e) {
 			System.out.println("ERROR: "+e.getMessage()+"\n");
@@ -23,11 +24,10 @@ public class yMachine {
 	}
 	
 	public static long execute(byte[] program) throws Exception {
+		
 		final SimpleMachine machine = new SimpleMachine(program);
-		machine.start();
-		while (machine.isRunning())
-			try { Thread.sleep(100); }
-			catch (InterruptedException e) {}
+
+		machine.run();	// main machine is executed in main thread 
 		
 		if (machine.isError())
 			throw machine.getError();
