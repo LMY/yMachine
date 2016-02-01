@@ -7,14 +7,14 @@ import java.util.Map;
 
 public class Compiler {
 	
-	final static boolean DEBUG = true;
+	final static boolean DEBUG = false;
 	
 	private Map<String,Integer> labels_declared;
-	private List<Pair> labels_used;
+	private List<JumpPoint> labels_used;
 	
 	public Compiler() {
 		labels_declared = new HashMap<String,Integer>();
-		labels_used = new ArrayList<Pair>();
+		labels_used = new ArrayList<JumpPoint>();
 	}
 	
 	public static byte[] compile(String text) throws Exception {
@@ -100,16 +100,16 @@ public class Compiler {
 				int reg = 0;
 				boolean negate = false;
 				
-				for (int i=1; i<orig.length(); i++) {
+				for (int i=1; i<orig.length(); i++)
 					switch (orig.charAt(i)) {
-					case 'N': negate = true; break;
-					case 'Z': reg |= (negate?16:1);  negate = false; break;
-					case 'E': reg |= (negate?32:2);  negate = false; break;
-					case 'G': reg |= (negate?64:4);  negate = false; break;
-					case 'L': reg |= (negate?128:8);  negate = false; break;
-					default : throw new Exception(""+(linen+1)+" ERROR: Invalid jump number ("+orig.charAt(i)+")");
+						case 'N': negate = true; break;
+						case 'Z': reg |= (negate?16:1);  negate = false; break;
+						case 'E': reg |= (negate?32:2);  negate = false; break;
+						case 'G': reg |= (negate?64:4);  negate = false; break;
+						case 'L': reg |= (negate?128:8);  negate = false; break;
+						default : throw new Exception(""+(linen+1)+" ERROR: Invalid jump number ("+orig.charAt(i)+")");
 					}
-				}
+
 				args[1] = ""+reg;
 			}
 		}
@@ -139,19 +139,13 @@ public class Compiler {
 			ret.add(op.getCode());
 		
 		for (int i=1; i<args.length; i++) {
-//			if (i == 2 && (op == Op.JMP || op == Op.LOADCODE) && !Utils.isInteger(args[2])) {
-//				labels_used.add(new Pair(args[2], addr+ret.size(), addr+ret.size()+4));
-//				ret.addAll(compileValue(""+DUMMY_INT_VALUE));
-//			}
-//			else
-//				ret.addAll(compileValue(args[i]));
 			if (isCompilableValue(args[i]))
 				ret.addAll(compileValue(args[i]));
 			else {
 				if (args[2].charAt(0) == '&')
-					labels_used.add(new Pair(args[2].substring(1), addr+ret.size(), addr+ret.size()+4, true));
+					labels_used.add(new JumpPoint(args[2].substring(1), addr+ret.size(), addr+ret.size()+4, true));
 				else
-					labels_used.add(new Pair(args[2], addr+ret.size(), addr+ret.size()+4, false));
+					labels_used.add(new JumpPoint(args[2], addr+ret.size(), addr+ret.size()+4, false));
 				ret.addAll(compileValue(""+DUMMY_INT_VALUE));				
 			}
 		}
@@ -160,7 +154,7 @@ public class Compiler {
 	}
 	
 	private void adjourn_calls(byte[] ret) throws Exception {
-		for (Pair p : labels_used) {
+		for (JumpPoint p : labels_used) {
 			final Integer where = labels_declared.get(p.first);
 			if (where == null)
 				throw new Exception("ERROR: Undefined label '"+p.first+"'");
