@@ -24,6 +24,14 @@ public class yMachine {
 	
 	public static long execute(byte[] program) throws Exception {
 		final SimpleMachine machine = new SimpleMachine(program);
-		return machine.start();
+		machine.start();
+		while (machine.isRunning())
+			try { Thread.sleep(100); }
+			catch (InterruptedException e) {}
+		
+		if (machine.isError())
+			throw machine.getError();
+		else
+			return machine.getReturnValue();
 	}
 }

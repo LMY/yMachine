@@ -3,7 +3,7 @@ package y;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SimpleMachine {
+public class SimpleMachine extends Thread {
 	
 	final static boolean DEBUG = Compiler.DEBUG;
 	
@@ -15,6 +15,7 @@ public class SimpleMachine {
 	
 	private long retv;
 	private boolean running;
+	private Exception exception;
 	
 	private long[] registers;
 	private byte[] program;
@@ -29,6 +30,7 @@ public class SimpleMachine {
 	public SimpleMachine(byte[] program) {
 		registers = new long[1];
 		machines = new HashMap<Integer, SimpleMachine>();
+		exception = null;
 		
 		load(program, true);
 		
@@ -46,14 +48,19 @@ public class SimpleMachine {
 			registers[0] = 0;
 	}
 	
-	public long start() throws Exception {
+	public void run() {
 		running = true;
 		retv = 0;
+		exception = null;
 		
-		while (registers[0] < program.length && running)
-			step(program);
-		
-		return retv;
+		try {
+			while (registers[0] < program.length && running)
+				step(program);
+		}
+		catch (Exception e) {
+			exception = e;
+			running = false;
+		}
 	}
 	
 	
@@ -118,8 +125,7 @@ public class SimpleMachine {
 				System.out.println();
 			}
 			
-			@SuppressWarnings("unused")
-			long retv_new = mac.start();	// note that retvalue of nested machine is currently discarted 
+			mac.start(); 
 		}
 		else if (op == Op.JOIN) {
 			final SimpleMachine mac = machines.get(reg1);
@@ -128,6 +134,9 @@ public class SimpleMachine {
 			while (mac.isRunning())
 				try { Thread.sleep(100); }
 				catch (InterruptedException e) {}
+			
+			if (mac.isError())
+				throw mac.getError();
 		}
 		else if (op == Op.KILL) {
 			final SimpleMachine mac = machines.get(reg1);
@@ -193,10 +202,10 @@ public class SimpleMachine {
 				registers[reg1] >>= value;
 			else if (op == Op.SHL)
 				registers[reg1] <<= value;
-			else if (op == Op.ROR)				// TODO
-				registers[reg1] >>= value;
-			else if (op == Op.ROL)				// TODO
-				registers[reg1] <<= value;
+			else if (op == Op.ROR)
+				registers[reg1] = Long.rotateRight(registers[reg1], value);
+			else if (op == Op.ROL)
+				registers[reg1] = Long.rotateLeft(registers[reg1], value);
 			
 			else if (op == Op.TEST) {
 				flag_z = registers[reg1]==0;
@@ -322,6 +331,18 @@ public class SimpleMachine {
 	
 	public boolean isRunning() {
 		return running; 
+	}
+	
+	public boolean isError() {
+		return exception != null;
+	}
+	
+	public Exception getError() {
+		return exception;
+	}
+	
+	public long getReturnValue() {
+		return retv;
 	}
 	
 	public boolean kill() {
