@@ -4,10 +4,11 @@ public class yMachine {
 	public static void main(String args[])
 	{
 		try {
-			System.out.println(""+executeFilename("asm/factN.asm"));
+			System.out.println(""+executeFilename("asm/callSubr.asm"));
 		}
 		catch (Exception e) {
-			System.out.println(e.getMessage());
+			System.out.println("ERROR: "+e.getMessage()+"\n");
+			System.out.println(e.toString());
 		}
 	}
 	
@@ -21,7 +22,7 @@ public class yMachine {
 		return execute(program);
 	}
 	
-	public static long execute(byte[] program) {
+	public static long execute(byte[] program) throws Exception {
 		final SimpleMachine machine = new SimpleMachine(program);
 		return machine.start();
 	}

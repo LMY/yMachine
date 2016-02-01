@@ -7,6 +7,17 @@ public enum Op {
 	DEC,
 	NOT,
 	
+	CLONE,
+	FORK,
+	START,
+	JOIN,
+	KILL,
+	FREE,
+	
+	LOADCODE,
+	IN,
+	OUT,
+	
 	MOV,
 	ADD,
 	SUB,
@@ -31,6 +42,7 @@ public enum Op {
 	
 	public static final String[] names = {  "NOP",
 		"INC", "DEC", "NOT",
+		"CLONE", "FORK", "START", "JOIN", "KILL", "FREE", "LOADCODE", "IN", "OUT",
 		"MOV", "ADD", "SUB", "MUL", "DIV", "MOD", "AND", "OR", "XOR", "SHR", "SHL", "ROR", "ROL", "TEST", "JMP", "ALLOC", "RETURN" };
 	
 	public String getName() { return names[ordinal()]; }
@@ -42,7 +54,7 @@ public enum Op {
 
 	public static Op create(String s) throws Exception
 	{
-		for (int i=1; i<names.length; i++)
+		for (int i=0; i<names.length; i++)
 			if (s.equalsIgnoreCase(names[i]))
 				return create(i);
 

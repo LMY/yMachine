@@ -1,5 +1,8 @@
 package y;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class SimpleMachine {
 	
 	private boolean flag_e;
@@ -14,6 +17,8 @@ public class SimpleMachine {
 	private long[] registers;
 	private byte[] program;
 	
+	private Map<Integer, SimpleMachine> machines;
+	
 	
 	public SimpleMachine() {
 		this(new byte[0]);
@@ -21,6 +26,8 @@ public class SimpleMachine {
 	
 	public SimpleMachine(byte[] program) {
 		registers = new long[1];
+		machines = new HashMap<Integer, SimpleMachine>();
+		
 		load(program, true);
 		
 		flag_e = false;
@@ -37,7 +44,7 @@ public class SimpleMachine {
 			registers[0] = 0;
 	}
 	
-	public long start() {
+	public long start() throws Exception {
 		running = true;
 		retv = 0;
 		
@@ -48,16 +55,19 @@ public class SimpleMachine {
 	}
 	
 	
-	public void step(byte[] program) {
+	public void step(byte[] program) throws Exception {
 		final Op op = Op.create(program[(int) registers[0]++]);
-//System.out.println(""+op.toString());
+System.out.println(""+op.toString());
 		
 		if (op == Op.NOP)
 			return;
 		
 		final int reg1 = parseRegister(program);
-//System.out.println(""+reg1);
+System.out.println(""+reg1);
 		
+		//
+		// OPS with 1 param
+		//
 		if (op == Op.INC)
 			registers[reg1]++;
 		else if (op == Op.DEC)
@@ -75,9 +85,54 @@ public class SimpleMachine {
 			running = false;
 			retv = reg1;
 		}
+		else if (op == Op.FORK) {
+			final SimpleMachine newmachine = new SimpleMachine();
+			machines.put(reg1, newmachine);
+		}
+		else if (op == Op.CLONE) {
+			final SimpleMachine newmachine = new SimpleMachine();
+			
+			final long[] copyregs = new long[registers.length];
+			for (int i=1; i<copyregs.length; i++)
+				copyregs[i] = registers[i];
+			newmachine.loadRegisters(copyregs);
+			
+			machines.put(reg1, newmachine);
+		}
+		else if (op == Op.FREE)
+			machines.remove(reg1);
+		else if (op == Op.START) {
+			final SimpleMachine mac = machines.get(reg1);
+			throwIfMachineDoesntExist(mac, reg1);
+			
+			System.out.print("\nStaring new machine: ");
+			mac.dump();
+			System.out.println();
+			
+			@SuppressWarnings("unused")
+			long retv_new = mac.start();	// note that retvalue of nested machine is currently discarted 
+		}
+		else if (op == Op.JOIN) {
+			final SimpleMachine mac = machines.get(reg1);
+			throwIfMachineDoesntExist(mac, reg1);
+			
+			while (mac.isRunning())
+				try { Thread.sleep(100); }
+				catch (InterruptedException e) {}
+		}
+		else if (op == Op.KILL) {
+			final SimpleMachine mac = machines.get(reg1);
+			throwIfMachineDoesntExist(mac, reg1);
+			mac.kill();
+			machines.remove(reg1);			// FREE not required
+		}
+		
+		//
+		// OPS with 2 params
+		//
 		else {
 			final int value = parseRegister(program);
-//	System.out.println(""+value);
+	System.out.println(""+value);
 	
 			if (op == Op.MOV)
 				registers[reg1] = value;
@@ -130,10 +185,43 @@ public class SimpleMachine {
 					(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)))	// required flags ok
 					registers[0] = value;
 			}
+			//
+			// OPS with 3 params
+			//
+			else {
+				final int value2 = parseRegister(program);
+				
+				if (op == Op.IN) {
+					final SimpleMachine mac = machines.get(reg1);
+					throwIfMachineDoesntExist(mac, reg1);
+					
+					loadRegister(value, mac.readRegister(value2));
+				}
+				else if (op == Op.OUT) {
+					final SimpleMachine mac = machines.get(reg1);
+					throwIfMachineDoesntExist(mac, reg1);
+					
+					mac.loadRegister(value2, value);
+				}
+				else if (op == Op.LOADCODE) {
+					final SimpleMachine mac = machines.get(reg1);
+					throwIfMachineDoesntExist(mac, reg1);
+					
+					final byte[] subprog = new byte[value2];
+					for (int i=0; i<subprog.length; i++)
+						subprog[i] = program[value+i];
+					mac.load(subprog, false);
+				}
+			}
 		}
 	}
 	
-	public int parseRegister(byte[] program) {
+	private void throwIfMachineDoesntExist(SimpleMachine mac, long reg1) throws Exception {
+		if (mac == null)
+			throw new Exception("Machine "+reg1+" doesn't exist");
+	}
+	
+	private int parseRegister(byte[] program) {
 		int ref_count = 0;
 		
 		while (true) {
@@ -149,7 +237,7 @@ public class SimpleMachine {
 		}
 	}
 	
-	public int parseValue(byte[] program) {
+	private int parseValue(byte[] program) {
 		return Utils.fromByteArray(new byte[] {		// decode 4 byte -> int
 				program[(int) registers[0]++],
 				program[(int) registers[0]++],
@@ -171,5 +259,36 @@ public class SimpleMachine {
 	
 	public long readRegister(int n) {
 		return registers[n];
+	}
+
+	public void loadRegister(int n, long value) {
+		if (registers == null)
+			registers = new long[n+1];
+		if (registers.length < n+1) {
+			final long[] newregisters = new long[n+1];
+			for (int i=0; i<registers.length; i++)
+				newregisters[i] = registers[i];
+
+			registers = newregisters;
+		}
+		
+		registers[n] = value;
+	}
+
+	
+	public void loadRegisters(long[] registers) {
+		this.registers = registers;
+	}
+	
+	public boolean isRunning() {
+		return running; 
+	}
+	
+	public boolean kill() {
+		if (!running)
+			return false;
+		
+		running = false;
+		return true;
 	}
 }

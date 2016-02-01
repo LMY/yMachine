@@ -7,10 +7,12 @@ import java.util.Map;
 
 public class Compiler {
 	
-	private Map<String,Integer> labels;
+	private Map<String,Integer> labels_declared;
+	private List<Pair> labels_used;
 	
 	public Compiler() {
-		labels = new HashMap<String,Integer>();
+		labels_declared = new HashMap<String,Integer>();
+		labels_used = new ArrayList<Pair>();
 	}
 	
 	public static byte[] compile(String text) throws Exception {
@@ -37,7 +39,10 @@ public class Compiler {
 		final byte[] ret = new byte[compiled.size()];
 		for (int i=0; i<ret.length; i++)
 			ret[i] = compiled.get(i);
-		return ret;		
+		
+		adjourn_calls(ret);
+		
+		return ret;
 	}
 	
 	private String removeComments(String text) {
@@ -45,52 +50,57 @@ public class Compiler {
 		return (pos < 0 ? text : text.substring(0, pos-1)).trim();
 	}
 
-	public List<Byte> compileLine(String line, int linen, int addr) throws Exception {
+	private List<Byte> compileLine(String line, int linen, int addr) throws Exception {
 		
 		// save labels
 		if (line.contains(":")) {
 			final String[] p = line.split(":");
-			if (p.length != 2)
+			if (p.length > 2)
 				throw new Exception(""+(linen+1)+" ERROR: Multiple labels (or usage of ':'s)");
-			line = p[1].trim();
 
 			// commented = labels can be redefined
-//			if (labels.get(p[0]) != null)
-//				throw new Exception(""+(linen+1)+" ERROR: Label '"+p[0]+"' already defined at "+labels.get(p[0]));
+			if (labels_declared.get(p[0]) != null)
+				throw new Exception(""+(linen+1)+" ERROR: Label '"+p[0]+"' already defined at "+labels_declared.get(p[0]));
 			
-			labels.put(p[0].trim(), addr);
+			labels_declared.put(p[0].trim(), addr);
+			
+			if (p.length == 1)
+				return new ArrayList<Byte>();
+			line = p[1].trim();
 		}
 		
 		String[] args = Utils.splitAndTrim(line, "[\\s,]");
 
 		// decode conditional JMPs
-		if (args[0].startsWith("J") && args.length == 2) {
+		if (args[0].startsWith("J") && !args[0].equalsIgnoreCase("JOIN") && args.length == 2) {
 			
-			final String orig = args[0];
-			args = new String[] { "JMP", "", args[1] }; 
-			
-			int reg = 0;
-			boolean negate = false;
-			
-			for (int i=1; i<orig.length(); i++) {
-				switch (orig.charAt(i)) {
-				case 'N': negate = true; break;
-				case 'Z': reg |= (negate?16:1);  negate = false; break;
-				case 'E': reg |= (negate?32:2);  negate = false; break;
-				case 'G': reg |= (negate?64:4);  negate = false; break;
-				case 'L': reg |= (negate?128:8);  negate = false; break;
-				default : throw new Exception(""+(linen+1)+" ERROR: Invalid jump number ("+orig.charAt(i)+")");
-				}
+			if (args[0].equals("JMP")) {
+				args = new String[] { "JMP", "0", args[1] }; 
 			}
-			args[1] = ""+reg;
+			else {
+				final String orig = args[0];
+				args = new String[] { "JMP", "", args[1] }; 
+				
+				int reg = 0;
+				boolean negate = false;
+				
+				for (int i=1; i<orig.length(); i++) {
+					switch (orig.charAt(i)) {
+					case 'N': negate = true; break;
+					case 'Z': reg |= (negate?16:1);  negate = false; break;
+					case 'E': reg |= (negate?32:2);  negate = false; break;
+					case 'G': reg |= (negate?64:4);  negate = false; break;
+					case 'L': reg |= (negate?128:8);  negate = false; break;
+					default : throw new Exception(""+(linen+1)+" ERROR: Invalid jump number ("+orig.charAt(i)+")");
+					}
+				}
+				args[1] = ""+reg;
+			}
 		}
 		
-		if (args[0].equals("JMP") && !Utils.isInteger(args[2])) {
-			Integer where = labels.get(args[2]);
-			if (where == null)
-				throw new Exception(""+(linen+1)+" ERROR: Undefined label '"+args[2]+"'");
-			
-			args[2] = ""+where;
+		if ((args[0].equals("JMP") || args[0].equals("LOADCODE")) && !Utils.isInteger(args[2])) {
+			labels_used.add(new Pair(args[2], addr+1+4)); // +1 (JMP) + 4 (JMP FLAGS)
+			args[2] = "0";
 		}
 		
 		final List<Byte> ret = new ArrayList<Byte>();
@@ -101,6 +111,10 @@ public class Compiler {
 		if ((op == Op.NOP && args.length != 1) ||
 			(op == Op.INC && args.length != 2) || (op == Op.DEC && args.length != 2) || (op == Op.NOT && args.length != 2) ||
 			(op == Op.ALLOC && args.length != 2) || (op == Op.RETURN && args.length != 2) ||
+			
+			(op == Op.CLONE && args.length != 2) || (op == Op.FORK && args.length != 2) || (op == Op.START && args.length != 2) || (op == Op.JOIN && args.length != 2) ||
+			(op == Op.KILL && args.length != 2) || (op == Op.FREE && args.length != 2) ||
+			(op == Op.LOADCODE && args.length != 4) || (op == Op.IN && args.length != 4) || (op == Op.OUT && args.length != 4) ||
 
 			(op == Op.MOV && args.length != 3) || (op == Op.ADD && args.length != 3) || (op == Op.SUB && args.length != 3) ||
 			(op == Op.MUL && args.length != 3) || (op == Op.DIV && args.length != 3) || (op == Op.MOD && args.length != 3) ||
@@ -108,13 +122,26 @@ public class Compiler {
 			(op == Op.SHR && args.length != 3) || (op == Op.SHL && args.length != 3) || (op == Op.ROR && args.length != 3) ||
 			(op == Op.ROL && args.length != 3) || (op == Op.TEST && args.length != 3) || (op == Op.JMP && args.length != 3))
 			throw new Exception(""+(linen+1)+" ERROR: Invalid arg number ("+args.length+")");
-			
+		
 		ret.add(op.getCode());
 		
 		for (int i=1; i<args.length; i++)
 			ret.addAll(compileValue(args[i]));
 		
 		return ret;
+	}
+	
+	private void adjourn_calls(byte[] ret) throws Exception {
+		for (Pair p : labels_used) {
+			final Integer where = labels_declared.get(p.first);
+			if (where == null)
+				throw new Exception("ERROR: Undefined label '"+p.first+"'");
+			
+			final List<Byte> addr = compileValue(""+where);
+			
+			for (int i=0; i<4; i++)
+				ret[p.second+i] = addr.get(i);
+		}
 	}
 	
 	private static Op createOpcode(String opcode, int linen) throws Exception {
