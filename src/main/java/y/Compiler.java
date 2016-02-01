@@ -7,6 +7,8 @@ import java.util.Map;
 
 public class Compiler {
 	
+	final static boolean DEBUG = false;
+	
 	private Map<String,Integer> labels_declared;
 	private List<Pair> labels_used;
 	
@@ -31,9 +33,14 @@ public class Compiler {
 			if (line.isEmpty())
 				continue;
 			
-			final List<Byte> onelinecompiled = compileLine(line, linen, compiled.size());
-			if (onelinecompiled != null)
+			final int addr = compiled.size();
+			final List<Byte> onelinecompiled = compileLine(line, linen, addr);
+			if (onelinecompiled != null) {
 				compiled.addAll(onelinecompiled);
+				
+				if (DEBUG)
+					dump_compiled_line(addr, line, onelinecompiled);
+			}
 		}
 		
 		final byte[] ret = new byte[compiled.size()];
@@ -41,6 +48,9 @@ public class Compiler {
 			ret[i] = compiled.get(i);
 		
 		adjourn_calls(ret);
+		
+		if (DEBUG) 
+			dump_compiled(ret);
 		
 		return ret;
 	}
@@ -99,7 +109,7 @@ public class Compiler {
 		}
 		
 		if ((args[0].equals("JMP") || args[0].equals("LOADCODE")) && !Utils.isInteger(args[2])) {
-			labels_used.add(new Pair(args[2], addr+1+4)); // +1 (JMP) + 4 (JMP FLAGS)
+			labels_used.add(new Pair(args[2], addr+1+4, addr)); // +1 (JMP) + 4 (JMP FLAGS)
 			args[2] = "0";
 		}
 		
@@ -137,7 +147,7 @@ public class Compiler {
 			if (where == null)
 				throw new Exception("ERROR: Undefined label '"+p.first+"'");
 			
-			final List<Byte> addr = compileValue(""+where);
+			final List<Byte> addr = compileValue(""+(where-p.second-4));
 			
 			for (int i=0; i<4; i++)
 				ret[p.second+i] = addr.get(i);
@@ -180,5 +190,23 @@ public class Compiler {
 	
 	public static final byte[] intToByteArray(int value) {
 	    return new byte[] { (byte)(value >>> 24), (byte)(value >>> 16), (byte)(value >>> 8), (byte)value };
+	}
+	
+	private void dump_compiled(byte[] ret) {
+		System.out.print("Compiled: [");
+		
+		for (int i=0; i<ret.length; i++) {
+			System.out.print(""+((int) ret[i]));
+			System.out.print(i == ret.length-1 ? "]\n" : ", ");
+		}
+	}
+	
+	private void dump_compiled_line(int addr, String line, List<Byte> compiled) {
+		System.out.print(""+addr+"\t\t"+line+"\t[");
+		
+		for (int i=0; i<compiled.size(); i++) {
+			System.out.print(""+((int) compiled.get(i)));
+			System.out.print(i == compiled.size()-1 ? "]\n" : ", ");
+		}
 	}
 }

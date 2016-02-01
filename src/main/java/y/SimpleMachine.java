@@ -5,6 +5,8 @@ import java.util.Map;
 
 public class SimpleMachine {
 	
+	final static boolean DEBUG = false;
+	
 	private boolean flag_e;
 	private boolean flag_z;
 	private boolean flag_g;
@@ -56,14 +58,19 @@ public class SimpleMachine {
 	
 	
 	public void step(byte[] program) throws Exception {
+		
+		if (DEBUG)
+			System.out.print("(0x"+(registers[0])+")");
+
 		final Op op = Op.create(program[(int) registers[0]++]);
-System.out.println(""+op.toString());
 		
 		if (op == Op.NOP)
 			return;
 		
 		final int reg1 = parseRegister(program);
-System.out.println(""+reg1);
+
+		if (DEBUG)
+			System.out.println("\t"+op.toString()+"\t"+reg1);
 		
 		//
 		// OPS with 1 param
@@ -105,9 +112,11 @@ System.out.println(""+reg1);
 			final SimpleMachine mac = machines.get(reg1);
 			throwIfMachineDoesntExist(mac, reg1);
 			
-			System.out.print("\nStaring new machine: ");
-			mac.dump();
-			System.out.println();
+			if (DEBUG) {
+				System.out.print("\nStaring new machine: ");
+				mac.dump();
+				System.out.println();
+			}
 			
 			@SuppressWarnings("unused")
 			long retv_new = mac.start();	// note that retvalue of nested machine is currently discarted 
@@ -132,7 +141,9 @@ System.out.println(""+reg1);
 		//
 		else {
 			final int value = parseRegister(program);
-	System.out.println(""+value);
+			
+			if (DEBUG)
+				System.out.println(""+value);
 	
 			if (op == Op.MOV)
 				registers[reg1] = value;
@@ -183,7 +194,7 @@ System.out.println(""+reg1);
 				
 				if (!((req_z && !flag_z) || (req_e && !flag_e) || (req_g && !flag_g) || (req_l && !flag_l) ||
 					(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)))	// required flags ok
-					registers[0] = value;
+					registers[0] += value;
 			}
 			//
 			// OPS with 3 params
@@ -207,9 +218,14 @@ System.out.println(""+reg1);
 					final SimpleMachine mac = machines.get(reg1);
 					throwIfMachineDoesntExist(mac, reg1);
 					
+					final int base = (int) (registers[0]+value-4);
+					
+					if (DEBUG)
+						System.out.println("LOAD CODE FROM "+base);
+					
 					final byte[] subprog = new byte[value2];
 					for (int i=0; i<subprog.length; i++)
-						subprog[i] = program[value+i];
+						subprog[i] = program[base + i];
 					mac.load(subprog, false);
 				}
 			}

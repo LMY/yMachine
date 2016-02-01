@@ -19,13 +19,12 @@
 			RETURN #2		
 
 @start:		ALLOC 2
-			MOV 2,150	// new machine id
 			MOV 1,10	// arg to calc
 			FORK 2
 			LOADCODE 2,@fact,100
 			OUT 2,#1,1
 			START 2
 			JOIN 2
-			IN 2,1,1
+			IN 2,1,2
 			FREE 2
 			RETURN #1
