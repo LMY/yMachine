@@ -4,7 +4,7 @@ public class yMachine {
 	public static void main(String args[])
 	{
 		try {
-			final long retv = executeFilename("asm/callSubr1.asm");
+			final long retv = executeFilename("asm/callSubr.asm");
 			System.out.println(""+retv);
 		}
 		catch (Exception e) {

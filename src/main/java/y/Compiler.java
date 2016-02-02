@@ -12,9 +12,14 @@ public class Compiler {
 	private Map<String,Integer> labels_declared;
 	private List<JumpPoint> labels_used;
 	
+	private List<Object[]> labels_lengths_used;
+	private Map<String,Integer> labels_lengths_declared;
+	
 	public Compiler() {
 		labels_declared = new HashMap<String,Integer>();
 		labels_used = new ArrayList<JumpPoint>();
+		labels_lengths_used = new ArrayList<Object[]>();
+		labels_lengths_declared = new HashMap<String,Integer>();
 	}
 	
 	public static byte[] compile(String text) throws Exception {
@@ -88,21 +93,37 @@ public class Compiler {
 			labels_declared.put(p[0].trim(), addr);
 			
 			if (p.length == 1)
-				return new ArrayList<Byte>();
+				return new ArrayList<Byte>();	// nothing to compile
 			line = p[1].trim();
 		}
 		
 		String[] args = Utils.splitAndTrim(line, "[\\s,]");
 
+		// INCLUDE
 		if (args[0].equals(OP_INCLUDE)) {
 			if (args.length < 2)
-				throw new Exception(""+(linen+1)+" ERROR: INCLUDE with no parm");
+				throw new Exception(""+(linen+1)+" ERROR: "+OP_INCLUDE+" with no parm");
 			
 			// create a new compiler unit (label scope is thus per file)
 			// using line and not args[2] to preserve spaces in filename
 			return Compiler.compileList(Utils.ReadWholeFile(line.substring(OP_INCLUDE.length()).trim()));
 		}
+		
+		// END PROCEDURE
+		if (args[0].equals(OP_ENDP)) {
+			if (args.length < 2)
+				throw new Exception(""+(linen+1)+" ERROR: "+OP_ENDP+" with no parm");
+			if (args.length > 2)
+				throw new Exception(""+(linen+1)+" ERROR: "+OP_ENDP+" with too many parms");
 			
+			final Integer startaddr = labels_declared.get(args[1]);
+			if (startaddr == null)
+				throw new Exception(""+(linen+1)+" ERROR: "+OP_ENDP+" found, but label "+args[1]+" does not exist");
+			
+			labels_lengths_declared.put(args[1], addr-startaddr);
+			
+			return new ArrayList<Byte>();	// nothing to compile
+		}
 		
 		// decode conditional JMPs
 		if (args[0].startsWith("J") && !args[0].equalsIgnoreCase("JOIN") && args.length == 2) {
@@ -127,12 +148,14 @@ public class Compiler {
 						default : throw new Exception(""+(linen+1)+" ERROR: Invalid jump number ("+orig.charAt(i)+")");
 					}
 
+				if (args[2].startsWith("&"))	// absolute jump
+					reg += 256;
+				
 				args[1] = ""+reg;
 			}
 		}
 		
 		final List<Byte> ret = new ArrayList<Byte>();
-		
 		
 		final Op op = createOpcode(args[0], linen);
 		
@@ -144,7 +167,8 @@ public class Compiler {
 			
 			(op == Op.CLONE && args.length != 2) || (op == Op.FORK && args.length != 2) || (op == Op.START && args.length != 2) || (op == Op.JOIN && args.length != 2) ||
 			(op == Op.KILL && args.length != 2) || (op == Op.FREE && args.length != 2) ||
-			(op == Op.LOADCODE && args.length != 4) || (op == Op.IN && args.length != 4) || (op == Op.OUT && args.length != 4) ||
+			(op == Op.LOADCODE && args.length != 3 && args.length != 4) ||
+			(op == Op.IN && args.length != 4) || (op == Op.OUT && args.length != 4) ||
 
 			(op == Op.MOV && args.length != 3) || (op == Op.ADD && args.length != 3) || (op == Op.SUB && args.length != 3) ||
 			(op == Op.MUL && args.length != 3) || (op == Op.DIV && args.length != 3) || (op == Op.MOD && args.length != 3) ||
@@ -168,6 +192,11 @@ public class Compiler {
 			}
 		}
 		
+		// LOADCODE LENGTH
+		if (op == Op.LOADCODE && args.length == 3) {
+			labels_lengths_used.add(new Object[]{args[2], (long)(addr+ret.size())});
+			ret.addAll(compileValue(""+DUMMY_INT_VALUE));
+		}
 		return ret;
 	}
 	
@@ -181,6 +210,20 @@ public class Compiler {
 			
 			for (int i=0; i<4; i++)
 				ret.set(p.second+i, addr.get(i));
+		}
+		
+		for (Object[] pair: labels_lengths_used) {
+			final String label = (String)pair[0];
+			final Integer where = labels_lengths_declared.get(label);
+			if (where == null)
+				throw new Exception("ERROR: Undefined length '"+label+"'");
+			
+			final List<Byte> addr = compileValue(""+where);
+			
+			final long base = (long)pair[1];
+			
+			for (int i=0; i<4; i++)
+				ret.set((int) (base+i), addr.get(i));
 		}
 	}
 	
@@ -248,4 +291,5 @@ public class Compiler {
 	}
 	
 	private final static String OP_INCLUDE = "INCLUDE";
+	private final static String OP_ENDP = "END";
 }

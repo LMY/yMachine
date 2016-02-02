@@ -229,9 +229,16 @@ public class SimpleMachine extends Thread {
 				final boolean req_ng = (reg1&64) != 0;
 				final boolean req_nl = (reg1&128) != 0;
 				
+				final boolean absolute = (reg1&256) != 0;
+				
 				if (!((req_z && !flag_z) || (req_e && !flag_e) || (req_g && !flag_g) || (req_l && !flag_l) ||
-					(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)))	// required flags ok
-					registers[0] += value;
+					(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)))	{// required flags ok
+					
+					if (absolute)
+						registers[0] = value;
+					else
+						registers[0] += value;
+				}
 			}
 			//
 			// OPS with 3 params
