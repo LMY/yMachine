@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class Compiler {
 	
-	final static boolean DEBUG = false;
+	final static boolean DEBUG = true;
 	
 	private Map<String,Integer> labels_declared;
 	private List<JumpPoint> labels_used;
@@ -18,11 +18,23 @@ public class Compiler {
 	}
 	
 	public static byte[] compile(String text) throws Exception {
+		final List<Byte> compiled = compileList(text);
+		
+		final byte[] ret = new byte[compiled.size()];
+		for (int i=0; i<ret.length; i++)
+			ret[i] = compiled.get(i);
+		
+		return ret;
+	}
+	
+	private static List<Byte> compileList(String text) throws Exception {
 		final Compiler compiler = new Compiler();
 		return compiler.compileLines(text);
 	}
 	
-	public byte[] compileLines(String text) throws Exception {
+	
+	
+	private List<Byte> compileLines(String text) throws Exception {
 		final String[] lines = text.split("\n");
 		
 		final List<Byte> compiled = new ArrayList<Byte>();
@@ -43,22 +55,17 @@ public class Compiler {
 			}
 		}
 		
-		final byte[] ret = new byte[compiled.size()];
-		for (int i=0; i<ret.length; i++)
-			ret[i] = compiled.get(i);
-		
-
 		if (DEBUG) 
-			dump_compiled(ret);
+			dump_compiled(compiled);
 
-		adjourn_calls(ret);
+		adjourn_calls(compiled);
 		
 		if (DEBUG) {
 			System.out.println("After adjourn_calls()");
-			dump_compiled(ret);
+			dump_compiled(compiled);
 		}
 		
-		return ret;
+		return compiled;
 	}
 	
 	private String removeComments(String text) {
@@ -87,6 +94,16 @@ public class Compiler {
 		
 		String[] args = Utils.splitAndTrim(line, "[\\s,]");
 
+		if (args[0].equals(OP_INCLUDE)) {
+			if (args.length < 2)
+				throw new Exception(""+(linen+1)+" ERROR: INCLUDE with no parm");
+			
+			// create a new compiler unit (label scope is thus per file)
+			// using line and not args[2] to preserve spaces in filename
+			return Compiler.compileList(Utils.ReadWholeFile(line.substring(OP_INCLUDE.length()).trim()));
+		}
+			
+		
 		// decode conditional JMPs
 		if (args[0].startsWith("J") && !args[0].equalsIgnoreCase("JOIN") && args.length == 2) {
 			
@@ -115,6 +132,7 @@ public class Compiler {
 		}
 		
 		final List<Byte> ret = new ArrayList<Byte>();
+		
 		
 		final Op op = createOpcode(args[0], linen);
 		
@@ -153,7 +171,7 @@ public class Compiler {
 		return ret;
 	}
 	
-	private void adjourn_calls(byte[] ret) throws Exception {
+	private void adjourn_calls(List<Byte> ret) throws Exception {
 		for (JumpPoint p : labels_used) {
 			final Integer where = labels_declared.get(p.first);
 			if (where == null)
@@ -162,7 +180,7 @@ public class Compiler {
 			final List<Byte> addr = compileValue(""+(p.absolute ? where : where-p.third));
 			
 			for (int i=0; i<4; i++)
-				ret[p.second+i] = addr.get(i);
+				ret.set(p.second+i, addr.get(i));
 		}
 	}
 	
@@ -211,12 +229,12 @@ public class Compiler {
 	    return new byte[] { (byte)(value >>> 24), (byte)(value >>> 16), (byte)(value >>> 8), (byte)value };
 	}
 	
-	private void dump_compiled(byte[] ret) {
+	private void dump_compiled(List<Byte> ret) {
 		System.out.print("Compiled: [");
 		
-		for (int i=0; i<ret.length; i++) {
-			System.out.print(""+((int) ret[i]));
-			System.out.print(i == ret.length-1 ? "]\n" : ", ");
+		for (int i=0; i<ret.size(); i++) {
+			System.out.print(""+((int) ret.get(i)));
+			System.out.print(i == ret.size()-1 ? "]\n" : ", ");
 		}
 	}
 	
@@ -228,4 +246,6 @@ public class Compiler {
 			System.out.print(i == compiled.size()-1 ? "]\n" : ", ");
 		}
 	}
+	
+	private final static String OP_INCLUDE = "INCLUDE";
 }
