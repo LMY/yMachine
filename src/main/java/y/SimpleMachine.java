@@ -28,6 +28,9 @@ public class SimpleMachine extends Thread {
 	}
 	
 	public SimpleMachine(byte[] program) {
+		running = true;					// in constructor and not in run()
+										// because otherwise another machine calling FORK -> if (x.isRunning()) | before start()
+										// would get false
 		registers = new long[1];
 		machines = new HashMap<Integer, SimpleMachine>();
 		exception = null;
@@ -42,14 +45,13 @@ public class SimpleMachine extends Thread {
 	}
 	
 	
-	public void load(byte[] program, boolean restart) {
+	public synchronized void load(byte[] program, boolean restart) {
 		this.program = program;
 		if (restart && registers != null && registers.length > 0)
 			registers[0] = 0;
 	}
 	
 	public void run() {
-		running = true;
 		retv = 0;
 		exception = null;
 		
@@ -63,219 +65,233 @@ public class SimpleMachine extends Thread {
 		}
 	}
 	
-	
-	public void step(byte[] program) throws Exception {
+	public synchronized void step(byte[] program) throws Exception {
 		
 		if (DEBUG)
 			System.out.print("(0x"+(registers[0])+")");
-
-		final Op op = Op.create(program[(int) registers[0]++]);
-		
-		if (op == Op.NOP)
-			return;
-		
-		final int reg1 = parseRegister(program);
-
-		if (DEBUG)
-			System.out.println("\t"+op.toString()+"\t"+reg1);
-		
-		//
-		// OPS with 1 param
-		//
-		if (op == Op.INC)
-			registers[reg1]++;
-		else if (op == Op.DEC)
-			registers[reg1]--;	
-		else if (op == Op.NOT)
-			registers[reg1] = ~registers[reg1];
-		else if (op == Op.ALLOC) {
-			final long[] newregisters = new long[reg1+1];
-			for (int i=0, imax=Math.min(registers.length, newregisters.length); i<imax; i++)
-				newregisters[i] = registers[i];
+	
+		final int start_addr = (int) registers[0]++;
+		final Op op = Op.create(program[start_addr]);
+		try {		
+			if (op == Op.NOP)
+				return;
 			
-			registers = newregisters;
-		}
-		else if (op == Op.RETURN) {
-			running = false;
-			retv = reg1;
-		}
-		else if (op == Op.FORK) {
-			final SimpleMachine newmachine = new SimpleMachine();
-			machines.put(reg1, newmachine);
-		}
-		else if (op == Op.CLONE) {
-			final SimpleMachine newmachine = new SimpleMachine();
-			
-			final long[] copyregs = new long[registers.length];
-			for (int i=1; i<copyregs.length; i++)
-				copyregs[i] = registers[i];
-			newmachine.loadRegisters(copyregs);
-			
-			machines.put(reg1, newmachine);
-		}
-		else if (op == Op.FREE)
-			machines.remove(reg1);
-		else if (op == Op.START) {
-			final SimpleMachine mac = machines.get(reg1);
-			throwIfMachineDoesntExist(mac, reg1);
-			
-			if (DEBUG) {
-				System.out.print("\nStaring new machine: ");
-				mac.dump();
-				System.out.println();
-			}
-			
-			mac.start(); 
-		}
-		else if (op == Op.JOIN) {
-			final SimpleMachine mac = machines.get(reg1);
-			throwIfMachineDoesntExist(mac, reg1);
-			
-			while (mac.isRunning())
-				try { Thread.sleep(100); }
-				catch (InterruptedException e) {}
-			
-			if (mac.isError())
-				throw mac.getError();
-		}
-		else if (op == Op.KILL) {
-			final SimpleMachine mac = machines.get(reg1);
-			throwIfMachineDoesntExist(mac, reg1);
-			mac.kill();
-			machines.remove(reg1);			// FREE not required
-		}
-		else if (op == Op.PRINTCHAR) {
-			System.out.print((char)reg1);
-		}
-		else if (op == Op.PRINTINT)
-			System.out.print(reg1);
-		else if (op == Op.PRINTSTRING) {
-			
-			int addr = reg1;
-			
-			while (true) {
-				final long value = Utils.fromByteArray(new byte[] {		// decode 4 byte -> int
-						program[addr++],
-						program[addr++],
-						program[addr++],
-						program[addr++]});
-				
-				if (value == 0)
-					break;
-				else
-					System.out.print((char)value);
-			}
-		}
-		else if (op == Op.DATA)
-			;	// NOP. Shouldn't exist a "DATA" opcode, anyway
-		else if (op == Op.READCHAR)
-			registers[reg1] = (char) System.in.read();
-		else if (op == Op.READINT)
-			registers[reg1] = Utils.readIntFromConsolle();
-		
-		//
-		// OPS with 2 params
-		//
-		else {
-			final int value = parseRegister(program);
-			
+			final int reg1 = parseRegister(program);
+	
 			if (DEBUG)
-				System.out.println(""+value);
-	
-			if (op == Op.MOV)
-				registers[reg1] = value;
-			else if (op == Op.ADD)
-				registers[reg1] += value;
-			else if (op == Op.SUB)
-				registers[reg1] -= value;
-			else if (op == Op.MUL)
-				registers[reg1] *= value;
-			else if (op == Op.DIV)
-				registers[reg1] /= value;
-			else if (op == Op.MOD)
-				registers[reg1] %= value;
+				System.out.print("\t"+op.toString()+"\t"+reg1);
 			
-			else if (op == Op.AND)
-				registers[reg1] &= value;
-			else if (op == Op.OR)
-				registers[reg1] |= value;
-			else if (op == Op.XOR)
-				registers[reg1] ^= value;
-	
-			else if (op == Op.SHR)
-				registers[reg1] >>= value;
-			else if (op == Op.SHL)
-				registers[reg1] <<= value;
-			else if (op == Op.ROR)
-				registers[reg1] = Long.rotateRight(registers[reg1], value);
-			else if (op == Op.ROL)
-				registers[reg1] = Long.rotateLeft(registers[reg1], value);
-			
-			else if (op == Op.TEST) {
-				flag_z = registers[reg1]==0;
-				flag_e = registers[reg1]==value;
-				flag_g = registers[reg1]<value;
-				flag_l = registers[reg1]>value;
-//				flag_o = false;
-			}
-			else if (op == Op.JMP) {
-				final boolean req_z = (reg1&1) != 0;
-				final boolean req_e = (reg1&2) != 0;
-				final boolean req_g = (reg1&4) != 0;
-				final boolean req_l = (reg1&8) != 0;
-				
-				final boolean req_nz = (reg1&16) != 0;
-				final boolean req_ne = (reg1&32) != 0;
-				final boolean req_ng = (reg1&64) != 0;
-				final boolean req_nl = (reg1&128) != 0;
-				
-				final boolean absolute = (reg1&256) != 0;
-				
-				if (!((req_z && !flag_z) || (req_e && !flag_e) || (req_g && !flag_g) || (req_l && !flag_l) ||
-					(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)))	{// required flags ok
+			//
+			// OPS with 1 param
+			//
+			if (op == Op.INC)
+				registers[reg1]++;
+			else if (op == Op.DEC)
+				registers[reg1]--;	
+			else if (op == Op.NOT)
+				registers[reg1] = ~registers[reg1];
+			else if (op == Op.ALLOC) {
+				if (registers.length < reg1+1) {	// realloc only if needed
+					final long[] newregisters = new long[reg1+1];
+					for (int i=0, imax=Math.min(registers.length, newregisters.length); i<imax; i++)
+						newregisters[i] = registers[i];
 					
-					if (absolute)
-						registers[0] = value;
-					else
-						registers[0] += value;
+					registers = newregisters;
 				}
 			}
+			else if (op == Op.RETURN) {
+				running = false;
+				retv = reg1;
+			}
+			else if (op == Op.FORK) {
+				final SimpleMachine newmachine = new SimpleMachine();
+				machines.put(reg1, newmachine);
+			}
+			else if (op == Op.CLONE) {
+				final SimpleMachine newmachine = new SimpleMachine();
+				
+				final long[] copyregs = new long[registers.length];
+				for (int i=1; i<copyregs.length; i++)
+					copyregs[i] = registers[i];
+				newmachine.loadRegisters(copyregs);
+				
+				machines.put(reg1, newmachine);
+			}
+			else if (op == Op.FREE)
+				machines.remove(reg1);
+			else if (op == Op.START) {
+				final SimpleMachine mac = machines.get(reg1);
+				throwIfMachineDoesntExist(mac, reg1);
+				
+//				if (DEBUG) {
+//					System.out.print("\nStaring new machine: ");
+//					mac.dump();
+//					System.out.println();
+//				}
+				
+				mac.start(); 
+			}
+			else if (op == Op.JOIN) {
+				final SimpleMachine mac = machines.get(reg1);
+				throwIfMachineDoesntExist(mac, reg1);
+				
+				waitForMachine(mac);
+				
+				if (mac.isError())
+					throw mac.getError();
+			}
+			else if (op == Op.KILL) {
+				final SimpleMachine mac = machines.get(reg1);
+				throwIfMachineDoesntExist(mac, reg1);
+				mac.kill();
+				machines.remove(reg1);			// FREE not required
+			}
+			else if (op == Op.PRINTCHAR) {
+				System.out.print((char)reg1);
+			}
+			else if (op == Op.PRINTINT)
+				System.out.print(reg1);
+			else if (op == Op.PRINTSTRING) {
+				
+				int addr = reg1;
+				
+				while (true) {
+					final long value = Utils.fromByteArray(new byte[] {		// decode 4 byte -> int
+							program[addr++],
+							program[addr++],
+							program[addr++],
+							program[addr++]});
+					
+					if (value == 0)
+						break;
+					else
+						System.out.print((char)value);
+				}
+			}
+			else if (op == Op.DATA)
+				;	// NOP. Shouldn't exist a "DATA" opcode, anyway
+			else if (op == Op.READCHAR)
+				registers[reg1] = (char) System.in.read();
+			else if (op == Op.READINT)
+				registers[reg1] = Utils.readIntFromConsolle();
+			
 			//
-			// OPS with 3 params
+			// OPS with 2 params
 			//
 			else {
-				final int value2 = parseRegister(program);
+				final int value = parseRegister(program);
 				
-				if (op == Op.IN) {
-					final SimpleMachine mac = machines.get(reg1);
-					throwIfMachineDoesntExist(mac, reg1);
-					
-					loadRegister(value, mac.readRegister(value2));
+				if (DEBUG)
+					System.out.print(" "+value);
+		
+				if (op == Op.MOV)
+					registers[reg1] = value;
+				else if (op == Op.ADD)
+					registers[reg1] += value;
+				else if (op == Op.SUB)
+					registers[reg1] -= value;
+				else if (op == Op.MUL)
+					registers[reg1] *= value;
+				else if (op == Op.DIV)
+					registers[reg1] /= value;
+				else if (op == Op.MOD)
+					registers[reg1] %= value;
+				
+				else if (op == Op.AND)
+					registers[reg1] &= value;
+				else if (op == Op.OR)
+					registers[reg1] |= value;
+				else if (op == Op.XOR)
+					registers[reg1] ^= value;
+		
+				else if (op == Op.SHR)
+					registers[reg1] >>= value;
+				else if (op == Op.SHL)
+					registers[reg1] <<= value;
+				else if (op == Op.ROR)
+					registers[reg1] = Long.rotateRight(registers[reg1], value);
+				else if (op == Op.ROL)
+					registers[reg1] = Long.rotateLeft(registers[reg1], value);
+				
+				else if (op == Op.TEST) {
+					flag_z = registers[reg1]==0;
+					flag_e = registers[reg1]==value;
+					flag_g = registers[reg1]<value;
+					flag_l = registers[reg1]>value;
+	//				flag_o = false;
 				}
-				else if (op == Op.OUT) {
-					final SimpleMachine mac = machines.get(reg1);
-					throwIfMachineDoesntExist(mac, reg1);
+				else if (op == Op.JMP) {
+					final boolean req_z = (reg1&JUMP_FLAG_Z) != 0;
+					final boolean req_e = (reg1&JUMP_FLAG_E) != 0;
+					final boolean req_g = (reg1&JUMP_FLAG_G) != 0;
+					final boolean req_l = (reg1&JUMP_FLAG_L) != 0;
 					
-					mac.loadRegister(value2, value);
+					final boolean req_nz = (reg1&JUMP_FLAG_NZ) != 0;
+					final boolean req_ne = (reg1&JUMP_FLAG_NE) != 0;
+					final boolean req_ng = (reg1&JUMP_FLAG_NG) != 0;
+					final boolean req_nl = (reg1&JUMP_FLAG_NL) != 0;
+					
+					final boolean absolute = (reg1&JUMP_FLAG_ABSOLUTE) != 0;
+					
+					if (!((req_z && !flag_z) || (req_e && !flag_e) || (req_g && !flag_g) || (req_l && !flag_l) ||
+						(req_nz && flag_z) || (req_ne && flag_e) || (req_ng && flag_g) || (req_nl && flag_l)))	{// required flags ok
+						
+						if (absolute)
+							registers[0] = value;
+						else
+							registers[0] += value;
+					}
 				}
-				else if (op == Op.LOADCODE) {
-					final SimpleMachine mac = machines.get(reg1);
-					throwIfMachineDoesntExist(mac, reg1);
-					
-					final int base = (int) (registers[0]+value-4);
+				//
+				// OPS with 3 params
+				//
+				else {
+					final int value2 = parseRegister(program);
 					
 					if (DEBUG)
-						System.out.println("LOAD CODE FROM "+base);
+						System.out.print(" "+value2);
 					
-					final byte[] subprog = new byte[value2];
-					for (int i=0; i<subprog.length; i++)
-						subprog[i] = program[base + i];
-					mac.load(subprog, false);
+					if (op == Op.IN) {
+						final SimpleMachine mac = machines.get(reg1);
+						throwIfMachineDoesntExist(mac, reg1);
+						
+						loadRegister(value, mac.readRegister(value2));
+					}
+					else if (op == Op.OUT) {
+						final SimpleMachine mac = machines.get(reg1);
+						throwIfMachineDoesntExist(mac, reg1);
+						
+						mac.loadRegister(value2, value);
+					}
+					else if (op == Op.LOADCODE) {
+						final SimpleMachine mac = machines.get(reg1);
+						throwIfMachineDoesntExist(mac, reg1);
+						
+						final int base = (int) (registers[0]+value-4);
+						
+						final byte[] subprog = new byte[value2];
+						for (int i=0; i<subprog.length; i++)
+							subprog[i] = program[base + i];
+						mac.load(subprog, false);
+					}
 				}
 			}
+			
+			if (DEBUG)
+				System.out.println();
+		}
+		catch (Exception e) {
+			throw new Exception("@"+start_addr+" ("+op.toString()+") "+e.toString());
 		}
 	}
 	
+	private void waitForMachine(SimpleMachine mac) {
+		while (mac.isRunning()) {
+			try { Thread.sleep(100); }
+			catch (InterruptedException e) {}
+		}
+	}
+
 	private void throwIfMachineDoesntExist(SimpleMachine mac, long reg1) throws Exception {
 		if (mac == null)
 			throw new Exception("Machine "+reg1+" doesn't exist");
@@ -317,11 +333,11 @@ public class SimpleMachine extends Thread {
 		System.out.println("]");
 	}
 	
-	public long readRegister(int n) {
+	public synchronized long readRegister(int n) {
 		return registers[n];
 	}
 
-	public void loadRegister(int n, long value) {
+	public synchronized void loadRegister(int n, long value) {
 		if (registers == null)
 			registers = new long[n+1];
 		if (registers.length < n+1) {
@@ -334,13 +350,12 @@ public class SimpleMachine extends Thread {
 		
 		registers[n] = value;
 	}
-
 	
-	public void loadRegisters(long[] registers) {
+	public synchronized void loadRegisters(long[] registers) {
 		this.registers = registers;
 	}
 	
-	public boolean isRunning() {
+	public synchronized boolean isRunning() {
 		return running; 
 	}
 	
@@ -356,11 +371,23 @@ public class SimpleMachine extends Thread {
 		return retv;
 	}
 	
-	public boolean kill() {
+	public synchronized boolean kill() {
 		if (!running)
 			return false;
 		
 		running = false;
 		return true;
 	}
+	
+	public final static int JUMP_FLAG_Z = 1;
+	public final static int JUMP_FLAG_E = 2;
+	public final static int JUMP_FLAG_G = 4;
+	public final static int JUMP_FLAG_L = 8;
+
+	public final static int JUMP_FLAG_NZ = 16;
+	public final static int JUMP_FLAG_NE = 32;
+	public final static int JUMP_FLAG_NG = 64;
+	public final static int JUMP_FLAG_NL = 128;
+	
+	public final static int JUMP_FLAG_ABSOLUTE = 256;
 }

@@ -8,8 +8,7 @@ public class yMachine {
 			System.out.println(""+retv);
 		}
 		catch (Exception e) {
-			System.out.println("ERROR: "+e.getMessage()+"\n");
-			System.out.println(e.toString());
+			System.out.println("ERROR: "+e.toString()+"\n");
 		}
 	}
 	

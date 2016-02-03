@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class Compiler {
 	
-	final static boolean DEBUG = true;
+	final static boolean DEBUG = false;
 	
 	private Map<String,Integer> labels_declared;
 	private List<JumpPoint> labels_used;
@@ -36,8 +36,6 @@ public class Compiler {
 		final Compiler compiler = new Compiler();
 		return compiler.compileLines(text);
 	}
-	
-	
 	
 	private List<Byte> compileLines(String text) throws Exception {
 		final String[] lines = text.split("\n");
@@ -141,15 +139,15 @@ public class Compiler {
 				for (int i=1; i<orig.length(); i++)
 					switch (orig.charAt(i)) {
 						case 'N': negate = true; break;
-						case 'Z': reg |= (negate?16:1);  negate = false; break;
-						case 'E': reg |= (negate?32:2);  negate = false; break;
-						case 'G': reg |= (negate?64:4);  negate = false; break;
-						case 'L': reg |= (negate?128:8);  negate = false; break;
+						case 'Z': reg |= (negate?SimpleMachine.JUMP_FLAG_NZ:SimpleMachine.JUMP_FLAG_Z);  negate = false; break;
+						case 'E': reg |= (negate?SimpleMachine.JUMP_FLAG_NE:SimpleMachine.JUMP_FLAG_E);  negate = false; break;
+						case 'G': reg |= (negate?SimpleMachine.JUMP_FLAG_NG:SimpleMachine.JUMP_FLAG_G);  negate = false; break;
+						case 'L': reg |= (negate?SimpleMachine.JUMP_FLAG_NL:SimpleMachine.JUMP_FLAG_L);  negate = false; break;
 						default : throw new Exception(""+(linen+1)+" ERROR: Invalid jump number ("+orig.charAt(i)+")");
 					}
 
 				if (args[2].startsWith("&"))	// absolute jump
-					reg += 256;
+					reg += SimpleMachine.JUMP_FLAG_ABSOLUTE;
 				
 				args[1] = ""+reg;
 			}
@@ -236,7 +234,7 @@ public class Compiler {
 		}
 	}
 	
-	public static final int DUMMY_INT_VALUE = 0x63636363;
+	public static final int DUMMY_INT_VALUE = 0x63636363;	// decimal { 99, 99, 99, 99 }, easy to spot. (can be any value, anyway)
 	public static final int REF_INT_VALUE = 0xFFFFFFFF;
 	public static final byte[] REF_VALUE = Utils.toByteArray(REF_INT_VALUE);
 
@@ -244,7 +242,6 @@ public class Compiler {
 	public static boolean isCompilableValue(String text) {
 		return text.matches("#*\\d*");
 	}
-	
 	
 	public static List<Byte> compileValue(String line) {
 		
